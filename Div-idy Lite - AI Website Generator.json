@@ -1,0 +1,372 @@
+{
+  "name": "Div-idy Lite - AI Website Generator - version 3 - upworkers",
+  "nodes": [
+    {
+      "parameters": {
+        "resource": "chat",
+        "model": "gpt-4o-mini",
+        "prompt": {
+          "messages": [
+            {
+              "role": "system",
+              "content": "You are an expert web designer generating HTML websites. You always follow Apple's style of design."
+            },
+            {
+              "content": "=[\n  {\n    \"role\": \"user\",\n    \"content\": \"the current html is here: {{ $json.current_html }}.\nIf the user equests edits, apply them to this HTML following {{ $json.prompt }}, rather than creating a new page. If there is no html, Create a full HTML page based on this description {{ $json.prompt }}. Never add comments - only write the HTML and nothing more.\nA clean, modern hero section with a full-width background design, large bold headline , a short subheadline, and two call-to-action buttons.\nA top navigation bar with a logo on the left and 2–3 links (About, team)\nA three-card section with icons, rounded corners, shadows, and soft hover effects.\nUse bright, friendly colors (e.g., warm oranges, soft blues, light backgrounds) and clean sans-serif fonts.\nInclude CSS in a <style> tag inside the same HTML file (no external CSS or JS).\nThe page should be fully responsive, centered content\n\n\"\n  }\n]\n"
+            }
+          ]
+        },
+        "simplifyOutput": false,
+        "options": {},
+        "requestOptions": {}
+      },
+      "id": "1cbe1f7f-f6ee-473c-a922-41a16ab5d452",
+      "name": "Generate HTML (OpenAI)",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [
+        256,
+        -144
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "CtAPOiykoEZuTVgD",
+          "name": "Testing cost API key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// --- Get the HTML content from the OpenAI node ---\nconst html =\n  $node[\"Generate HTML (OpenAI)\"].json?.choices?.[0]?.message?.content ??\n  $json.html ??\n  \"\";\n\n// --- Clean out markdown fences if they exist ---\nconst cleanedHtml = html\n  .replace(/^```(?:html)?/i, \"\")\n  .replace(/```$/, \"\")\n  .trim();\n\n// --- Return payload for Vercel deployment ---\nreturn [\n  {\n    json: {\n      name: `ai-site-${Date.now()}`,\n      files: [\n        {\n          file: \"index.html\",\n          data: cleanedHtml, // raw HTML string; Vercel accepts this\n        },\n      ],\n      projectSettings: { framework: null },\n      target: \"production\",\n    },\n  },\n];\n"
+      },
+      "id": "d65d6c5a-c71d-45ff-bd43-8f8c99038b6b",
+      "name": "Prepare Vercel Payload",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        704,
+        -144
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.vercel.com/v6/deployments?limit=1",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1152,
+        -144
+      ],
+      "id": "1e4f86a3-b1ab-4bf8-9a83-88668c2f3f60",
+      "name": "Fetch Deployment URL",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "iYh8aKiM65InJ9W1",
+          "name": "Vercel token N8N test 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5bb0cd69-a7a4-45a1-9d64-77b937fb8920",
+              "name": "deployment_url",
+              "value": "={{ 'https://' + $json[\"deployments\"][0][\"url\"] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1584,
+        -144
+      ],
+      "id": "ccc3bcb6-30d0-46b3-bbd7-1b4a603a8a9b",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "public": true,
+        "options": {
+          "responseMode": "responseNodes"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -416,
+        -144
+      ],
+      "id": "7fd33c51-591e-46bc-82da-6e310eed44f1",
+      "name": "Chat input",
+      "webhookId": "6a89d4f0-683d-40b6-b6d5-98e6da2cd662"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Merge Chat Input + Get row(s) data\n\n// Get chat message from the Chat Input node\nconst chatNode = $node[\"Chat input\"].json;\nconst userMessage = (chatNode.chatInput || \"\").trim();\n\n// Get any existing HTML (if available) from Get row(s)\nconst getRowData = $node[\"Get row(s)\"].json;\nconst currentHtml = getRowData.html || \"\";\n\n// If user says \"start new\", clear previous HTML\nlet finalHtml = currentHtml;\nif (userMessage.toLowerCase().includes(\"start new\")) {\n  finalHtml = \"\";\n}\n\n// Pass both values forward\nreturn [\n  {\n    json: {\n      prompt: userMessage,\n      current_html: finalHtml,\n      sessionId: chatNode.sessionId,\n    },\n  },\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        32,
+        -144
+      ],
+      "id": "b572b078-5ff5-4b9f-a87c-7fb1479e5bfd",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "value": "i0S3pQpPJgwsrQ44",
+          "mode": "list",
+          "cachedResultName": "html_memory_upworkers",
+          "cachedResultUrl": "/projects/cisuTMhblpNeiKpl/datatables/i0S3pQpPJgwsrQ44"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "sessionID",
+              "keyValue": "={{ $('Chat input').item.json.sessionId }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "html": "={{ $json.choices[0].message.content }}",
+            "sessionID": "={{ $('Chat input').item.json.sessionId }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "sessionID",
+              "displayName": "sessionID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "html",
+              "displayName": "html",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        480,
+        -144
+      ],
+      "id": "e828ad10-7c21-47e6-ad0c-b61481cb8f76",
+      "name": "Upsert row(s)"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "i0S3pQpPJgwsrQ44",
+          "mode": "list",
+          "cachedResultName": "html_memory_upworkers",
+          "cachedResultUrl": "/projects/cisuTMhblpNeiKpl/datatables/i0S3pQpPJgwsrQ44"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "sessionID",
+              "keyValue": "={{ $json.sessionId }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        -192,
+        -144
+      ],
+      "id": "dbc7a4c0-1622-4fc5-8e3a-18718241c781",
+      "name": "Get row(s)",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "message": "=Here’s your live page:\n{{ $json.deployment_url }}\n",
+        "waitUserReply": false,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chat",
+      "typeVersion": 1,
+      "position": [
+        1808,
+        -144
+      ],
+      "id": "d30a4505-ac81-4066-8ec2-708d34bb716d",
+      "name": "Respond to Chat"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.vercel.com/v13/deployments",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer paS5VxHX1nNAYqXVrv5Ze5t6"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        928,
+        -144
+      ],
+      "id": "0504122e-18a1-429c-a80c-cf92534b1bba",
+      "name": "Deploy to Vercel"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Generate HTML (OpenAI)": {
+      "main": [
+        [
+          {
+            "node": "Upsert row(s)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Vercel Payload": {
+      "main": [
+        [
+          {
+            "node": "Deploy to Vercel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Deployment URL": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Respond to Chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chat input": {
+      "main": [
+        [
+          {
+            "node": "Get row(s)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Generate HTML (OpenAI)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert row(s)": {
+      "main": [
+        [
+          {
+            "node": "Prepare Vercel Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s)": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deploy to Vercel": {
+      "main": [
+        [
+          {
+            "node": "Fetch Deployment URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "9c550d81-98e7-41cf-9b39-787c22fb4728",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b7d2b0e413b9bc96be579656dd7a55bd3fdcbd67fd6e114509b04dda69944a65"
+  },
+  "id": "zzaTr2EaO91IHJXw",
+  "tags": []
+}
