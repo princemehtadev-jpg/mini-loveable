@@ -1,5 +1,5 @@
 {
-  "name": "Mini loveable",
+  "name": "Complete - Mini loveable - dalle 2",
   "nodes": [
     {
       "parameters": {
@@ -12,7 +12,7 @@
               "content": "You are an expert web designer generating HTML websites. You always follow Apple's style of design."
             },
             {
-              "content": "=[\n  {\n    \"role\": \"user\",\n    \"content\": \"You are generating a landing page. The topic and content must fully reflect this description:\\n\\n{{ $('Code in JavaScript').item.json.prompt }}\\n\\nIf {{ $('Code in JavaScript').item.json.current_html }} exists, apply the user’s changes to that HTML. If not, create a new HTML page from scratch.\\n\\nImportant:\\n- The page’s **headline, subheadline, and feature text** should clearly relate to the given topic above. Avoid generic placeholder text like 'Feature One'.\\n- Use this image for the hero section: {{ $json.hero_image }} (as a CSS background or <img> tag).\\n- Include a clean, modern hero section (full-width background, large bold headline, short subheadline, and two call-to-action buttons).\\n- Add a top navigation bar (logo left, 2–3 links like About, Team).\\n- Include a three-card section with icons, rounded corners, shadows, and soft hover effects.\\n- Use bright, friendly colors (warm oranges, soft blues, light backgrounds) and clean sans-serif fonts.\\n- Put all CSS inside a single <style> tag (no external CSS or JS).\\n- Output **only** the final HTML (no markdown, no comments).\"\n  }\n]\n"
+              "content": "=[\n  {\n    \"role\": \"user\",\n    \"content\": \"You are generating a landing page. The topic and content must fully reflect this description:\\n\\n{{ $('Prepare Chat Prompt with Memory').item.json.prompt }}\\n\\nIf {{ $('Prepare Chat Prompt with Memory').item.json.current_html }} exists, apply the user’s changes to that HTML. If not, create a new HTML page from scratch.\\n\\nImportant:\\n- The page’s **headline, subheadline, and feature text** should clearly relate to the given topic above. Avoid generic placeholder text like 'Feature One'.\\n- Use this image for the hero section: {{ $json.hero_image }} (as a CSS background or <img> tag).\\n- Include a clean, modern hero section (full-width background, large bold headline, short subheadline, and two call-to-action buttons).\\n- Add a top navigation bar (logo left, 2–3 links like About, Team).\\n- Include a three-card section with icons, rounded corners, shadows, and soft hover effects.\\n- Use bright, friendly colors (warm oranges, soft blues, light backgrounds) and clean sans-serif fonts.\\n- Put all CSS inside a single <style> tag (no external CSS or JS).\\n- Output **only** the final HTML (no markdown, no comments).\"\n  }\n]\n"
             }
           ]
         },
@@ -25,7 +25,7 @@
       "type": "n8n-nodes-base.openAi",
       "typeVersion": 1,
       "position": [
-        944,
+        1216,
         256
       ],
       "credentials": {
@@ -37,32 +37,55 @@
     },
     {
       "parameters": {
-        "functionCode": "// --- Get the HTML content from the OpenAI node ---\nconst html =\n  $node[\"Generate HTML (OpenAI)\"].json?.choices?.[0]?.message?.content ??\n  $json.html ??\n  \"\";\n\n// --- Clean out markdown fences if they exist ---\nconst cleanedHtml = html\n  .replace(/^```(?:html)?/i, \"\")\n  .replace(/```$/, \"\")\n  .trim();\n\n// --- Return payload for Vercel deployment ---\nreturn [\n  {\n    json: {\n      name: `ai-site-${Date.now()}`,\n      files: [\n        {\n          file: \"index.html\",\n          data: cleanedHtml, // raw HTML string; Vercel accepts this\n        },\n      ],\n      projectSettings: { framework: null },\n      target: \"production\",\n    },\n  },\n];\n"
+        "public": true,
+        "options": {
+          "responseMode": "responseNodes"
+        }
       },
-      "id": "3389c9d0-cd3f-4fe9-89df-e0abdf20f2f1",
-      "name": "Prepare Vercel Payload",
-      "type": "n8n-nodes-base.function",
-      "typeVersion": 1,
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.3,
       "position": [
-        1392,
+        -1296,
         256
-      ]
+      ],
+      "id": "10e194b3-5d28-455b-be23-8c62f3b37bd1",
+      "name": "Chat input",
+      "webhookId": "a9e23b8b-588a-4262-846b-838939d3272b"
     },
     {
       "parameters": {
-        "url": "https://api.vercel.com/v6/deployments?limit=1",
+        "message": "=Here’s your live page:\n{{ $json.deployment_url }}\n",
+        "waitUserReply": false,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chat",
+      "typeVersion": 1,
+      "position": [
+        3184,
+        256
+      ],
+      "id": "c1a0e0d3-bdb4-4dfb-ab78-a52583c459e3",
+      "name": "Respond to Chat"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.vercel.com/v13/deployments",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1840,
+        2144,
         256
       ],
-      "id": "cdaf6bb4-98ad-4446-a11d-77adf2da2bda",
-      "name": "Fetch Deployment URL",
+      "id": "c80da925-a811-448a-bfb1-b8533863765e",
+      "name": "Deploy to Vercel",
       "credentials": {
         "httpHeaderAuth": {
           "id": "tUQy9JgGfpVjfXVg",
@@ -72,12 +95,248 @@
     },
     {
       "parameters": {
+        "resource": "image",
+        "model": "dall-e-2",
+        "prompt": "={{ $json.message.content }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -176,
+        256
+      ],
+      "id": "025b07d1-5273-4e11-ab27-93e55c37dcea",
+      "name": "Generate an image",
+      "credentials": {
+        "openAiApi": {
+          "id": "7mHb4eCxjT2Cduv4",
+          "name": "OpenAI - upworkers"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://api.vercel.com/v6/deployments?limit=1000",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -640,
+        832
+      ],
+      "id": "a4e768dc-899e-45f7-9ebf-454c80310b1c",
+      "name": "list deployments",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "tUQy9JgGfpVjfXVg",
+          "name": "vercal Header Auth account Matt"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = (items[0].json.deployments || [])\n  .sort((a, b) => b.created - a.created)\n  .slice(0); // keep 2 newest\nreturn d.map(x => ({ json: { uid: x.uid, createdAt: x.created } }));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -416,
+        832
+      ],
+      "id": "541e2308-33af-4046-9685-159f0292926c",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "method": "DELETE",
+        "url": "=https://api.vercel.com/v6/deployments/{{$json.uid}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -192,
+        832
+      ],
+      "id": "8c1463d9-2e1c-4c67-857b-bd42e560513b",
+      "name": "HTTP Request",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "tUQy9JgGfpVjfXVg",
+          "name": "vercal Header Auth account Matt"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "> ## **🧹 Optional Cleanup Flow (Vercel Deployments)**\n> ## Deletes older Vercel deployments, keeping only the two most recent.\n> ## Update your Vercel Header Auth credentials before running.\n> ## Use with caution — this permanently deletes older deployments.",
+        "height": 336,
+        "width": 1312,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -768,
+        656
+      ],
+      "typeVersion": 1,
+      "id": "9427bd9a-7594-4f38-9770-ebcae29c0f47",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "c3NWTExzLAJw5QeR",
+          "mode": "list",
+          "cachedResultName": "html_memory_mini_loveable",
+          "cachedResultUrl": "/projects/cisuTMhblpNeiKpl/datatables/c3NWTExzLAJw5QeR"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "sessionID",
+              "keyValue": "={{ $json.sessionId }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        -1056,
+        256
+      ],
+      "id": "ae44c1a7-0a2e-4542-9e25-12f9a79e3d76",
+      "name": "Get memory for current session",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "content": "## Step 1 – Fetch existing memory and prepare prompt\n\nRetrieves previously stored session data and combines it with the user’s latest chat input.\n### 🔧 Edit Required: Update the data table name (e.g., html_memory_mini_loveable) to your own memory table. \n### Ensure the table has columns sessionID and html",
+        "height": 432,
+        "width": 528
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1136,
+        0
+      ],
+      "typeVersion": 1,
+      "id": "a582ea6a-1d16-45db-aee3-489f7a15de5d",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Merge Chat Input + Get row(s) data\n\n// Get chat message from the Chat Input node\nconst chatNode = $node[\"Chat input\"].json;\nconst userMessage = (chatNode.chatInput || \"\").trim();\n\n// Get any existing HTML (if available) from Get row(s)\nconst getRowData = $node[\"Get memory for current session\"].json;\nconst currentHtml = getRowData.html || \"\";\n\n// If user says \"start new\", clear previous HTML\nlet finalHtml = currentHtml;\nif (userMessage.toLowerCase().includes(\"start new\")) {\n  finalHtml = \"\";\n}\n\n// Pass both values forward\nreturn [\n  {\n    json: {\n      prompt: userMessage,\n      current_html: finalHtml,\n      sessionId: chatNode.sessionId,\n    },\n  },\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -768,
+        256
+      ],
+      "id": "d649e12b-161d-49c6-8850-808317da01f4",
+      "name": "Prepare Chat Prompt with Memory"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "You are a prompt generator for DALL·E. Convert the user’s landing-page idea into ONE concise, vivid scene description for a website hero image. Include composition, setting, lighting, color palette, mood, style. Exclude any UI text, logos, or typography. Output ONLY the description text—no preface or formatting.",
+              "role": "system"
+            },
+            {
+              "content": "={{ $json.prompt }}"
+            }
+          ]
+        },
+        "options": {
+          "maxTokens": 120,
+          "temperature": 0.6
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -528,
+        256
+      ],
+      "id": "ed773e87-f664-4a37-8411-7fda827b5011",
+      "name": "Generate Image Prompt",
+      "credentials": {
+        "openAiApi": {
+          "id": "7mHb4eCxjT2Cduv4",
+          "name": "OpenAI - upworkers"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Step 2 – Generate image prompt and create hero image\n\nUses GPT-4o-mini to craft a vivid scene description and then generates a hero image using DALL·E 2.\n### 🔧 Edit Required: Replace the OpenAI credential with your own API key. \n### You can switch the model to adjust image quality or cost.",
+        "height": 432,
+        "width": 512
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -560,
+        0
+      ],
+      "typeVersion": 1,
+      "id": "92281864-f075-4ee0-8d29-7931cb8ca59b",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "operation": "binaryToPropery",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        96,
+        256
+      ],
+      "id": "36a0a0e2-3d82-427f-a56d-8c1f0a9f8148",
+      "name": "Convert Image to Base64"
+    },
+    {
+      "parameters": {
+        "content": "## Step 3 – Process image for upload\nConverts the generated image into a Base64 string and then wraps it as a valid data:image/png;base64,… URI for upload or preview.",
+        "height": 432,
+        "width": 512
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        16,
+        16
+      ],
+      "typeVersion": 1,
+      "id": "a649ab1f-a4fa-4e0b-b47c-6ea07da1178a",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
         "assignments": {
           "assignments": [
             {
-              "id": "5bb0cd69-a7a4-45a1-9d64-77b937fb8920",
-              "name": "deployment_url",
-              "value": "={{ 'https://' + $('Fetch Deployment URL').item.json.deployments[0].url}}",
+              "id": "6b52ab16-98e6-458c-a904-36edb9be67fd",
+              "name": "file",
+              "value": "={{ 'data:image/png;base64,' + $json.data }}\n",
               "type": "string"
             }
           ]
@@ -87,41 +346,117 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        2288,
+        368,
         256
       ],
-      "id": "a641a64c-7313-477c-9d39-a2d4d31f0158",
-      "name": "Edit Fields"
+      "id": "27e629ac-160d-4056-90d9-e8cf7895dbf3",
+      "name": "Format Image as Data URI"
     },
     {
       "parameters": {
-        "public": true,
-        "options": {
-          "responseMode": "responseNodes"
-        }
+        "method": "POST",
+        "url": "https://api.cloudinary.com/v1_1/<your_cloud_key>/image/upload",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "file",
+              "value": "={{$json.file}}"
+            },
+            {
+              "name": "upload_preset",
+              "value": "unsigned_upload"
+            },
+            {
+              "name": "folder",
+              "value": "ai_websites/landing_pages"
+            }
+          ]
+        },
+        "options": {}
       },
-      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
-      "typeVersion": 1.3,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [
-        -1200,
+        624,
         256
       ],
-      "id": "10e194b3-5d28-455b-be23-8c62f3b37bd1",
-      "name": "Chat input",
-      "webhookId": "a9e23b8b-588a-4262-846b-838939d3272b"
+      "id": "fa2cf73b-dcd9-46cc-b788-faa9bc965b4a",
+      "name": "Upload Image to Cloudinary"
     },
     {
       "parameters": {
-        "jsCode": "// Merge Chat Input + Get row(s) data\n\n// Get chat message from the Chat Input node\nconst chatNode = $node[\"Chat input\"].json;\nconst userMessage = (chatNode.chatInput || \"\").trim();\n\n// Get any existing HTML (if available) from Get row(s)\nconst getRowData = $node[\"Get row(s)\"].json;\nconst currentHtml = getRowData.html || \"\";\n\n// If user says \"start new\", clear previous HTML\nlet finalHtml = currentHtml;\nif (userMessage.toLowerCase().includes(\"start new\")) {\n  finalHtml = \"\";\n}\n\n// Pass both values forward\nreturn [\n  {\n    json: {\n      prompt: userMessage,\n      current_html: finalHtml,\n      sessionId: chatNode.sessionId,\n    },\n  },\n];\n"
+        "content": "## Step 4 – Upload image to Cloudinary and return link\n\nUploads the Base64-encoded image to Cloudinary and outputs the public image URL.\n### 🔧 Edit Required:\n### Replace <your_cloud_key> in the URL with your actual Cloudinary cloud name.\n",
+        "height": 432,
+        "width": 528
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        560,
+        16
+      ],
+      "typeVersion": 1,
+      "id": "bb55afb5-43f1-4cc5-bed2-b14b228dec32",
+      "name": "Sticky Note7"
+    },
+    {
+      "parameters": {
+        "jsCode": "return {\n  \"hero_image\": $input.first().json.url\n}\n"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -752,
+        912,
         256
       ],
-      "id": "d649e12b-161d-49c6-8850-808317da01f4",
-      "name": "Code in JavaScript"
+      "id": "d8de8a3a-c25a-4a22-911c-7b986b0ba579",
+      "name": "Return Hero Image URL"
+    },
+    {
+      "parameters": {
+        "content": "## Step 5 – Generate landing page HTML\n\nGenerates a responsive landing-page HTML layout using GPT-4o-mini based on the user’s topic and design input.\n### 🔧 Edit Required:\n\n### Update the OpenAI credential to your own.\n\nOptionally switch to GPT-4o or Gemini 2.5 Flash for richer, more creative HTML output.",
+        "height": 592,
+        "width": 256
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1136,
+        -128
+      ],
+      "typeVersion": 1,
+      "id": "5d4643bf-a4f3-4d46-abf9-d7933e295e78",
+      "name": "Sticky Note9"
+    },
+    {
+      "parameters": {
+        "content": "## Step 6 – Save HTML to memory and prepare for deployment\n\nSave HTML to Memory Table, Prepare Vercel Deployment Payload\nStores the generated HTML for the current session and prepares a clean JSON payload for Vercel deployment.\n### 🔧 Edit Required:\n### Replace the data table name (e.g., html_memory_mini_loveable) with your own.",
+        "height": 512,
+        "width": 528
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1440,
+        -16
+      ],
+      "typeVersion": 1,
+      "id": "5d6fd876-078f-42e4-acc2-dcdbadebf36e",
+      "name": "Sticky Note10"
+    },
+    {
+      "parameters": {
+        "content": "## Step 7 – Deploy site to Vercel\nDeploys the generated HTML to Vercel, retrieves the new deployment URL, makes it public, and formats it for easy sharing.\n### 🔧 Edit Required:\n\n### Update the Vercel API credential or Header Auth token with your account’s access token.",
+        "height": 496,
+        "width": 1056
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2048,
+        16
+      ],
+      "typeVersion": 1,
+      "id": "76a04f35-65be-4c41-843a-bbcdac040187",
+      "name": "Sticky Note12"
     },
     {
       "parameters": {
@@ -130,7 +465,7 @@
           "__rl": true,
           "value": "c3NWTExzLAJw5QeR",
           "mode": "list",
-          "cachedResultName": "html_memory_prince",
+          "cachedResultName": "html_memory_mini_loveable",
           "cachedResultUrl": "/projects/cisuTMhblpNeiKpl/datatables/c3NWTExzLAJw5QeR"
         },
         "filters": {
@@ -178,229 +513,28 @@
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1,
       "position": [
-        1168,
+        1520,
         256
       ],
       "id": "16f3d8a7-9020-4b01-8d4e-64145715ba90",
-      "name": "Upsert row(s)"
+      "name": "Save HTML to Memory Table"
     },
     {
       "parameters": {
-        "operation": "get",
-        "dataTableId": {
-          "__rl": true,
-          "value": "c3NWTExzLAJw5QeR",
-          "mode": "list",
-          "cachedResultName": "html_memory_prince",
-          "cachedResultUrl": "/projects/cisuTMhblpNeiKpl/datatables/c3NWTExzLAJw5QeR"
-        },
-        "filters": {
-          "conditions": [
-            {
-              "keyName": "sessionID",
-              "keyValue": "={{ $json.sessionId }}"
-            }
-          ]
-        }
+        "functionCode": "// --- Get the HTML content from the OpenAI node ---\nconst html =\n  $node[\"Generate HTML (OpenAI)\"].json?.choices?.[0]?.message?.content ??\n  $json.html ??\n  \"\";\n\n// --- Clean out markdown fences if they exist ---\nconst cleanedHtml = html\n  .replace(/^```(?:html)?/i, \"\")\n  .replace(/```$/, \"\")\n  .trim();\n\n// --- Return payload for Vercel deployment ---\nreturn [\n  {\n    json: {\n      name: `ai-site-${Date.now()}`,\n      files: [\n        {\n          file: \"index.html\",\n          data: cleanedHtml, // raw HTML string; Vercel accepts this\n        },\n      ],\n      projectSettings: { framework: null },\n      target: \"production\",\n    },\n  },\n];\n"
       },
-      "type": "n8n-nodes-base.dataTable",
+      "id": "3389c9d0-cd3f-4fe9-89df-e0abdf20f2f1",
+      "name": "Prepare Vercel Deployment Payload",
+      "type": "n8n-nodes-base.function",
       "typeVersion": 1,
       "position": [
-        -976,
+        1808,
         256
-      ],
-      "id": "ae44c1a7-0a2e-4542-9e25-12f9a79e3d76",
-      "name": "Get row(s)",
-      "alwaysOutputData": true
+      ]
     },
     {
       "parameters": {
-        "message": "=Here’s your live page:\n{{ $json.deployment_url }}\n",
-        "waitUserReply": false,
-        "options": {}
-      },
-      "type": "@n8n/n8n-nodes-langchain.chat",
-      "typeVersion": 1,
-      "position": [
-        2512,
-        256
-      ],
-      "id": "c1a0e0d3-bdb4-4dfb-ab78-a52583c459e3",
-      "name": "Respond to Chat"
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://api.vercel.com/v13/deployments",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ $json }}",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        1616,
-        256
-      ],
-      "id": "c80da925-a811-448a-bfb1-b8533863765e",
-      "name": "Deploy to Vercel",
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "tUQy9JgGfpVjfXVg",
-          "name": "vercal Header Auth account Matt"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "return {\n  \"hero_image\": $input.first().json.url\n}\n"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        720,
-        256
-      ],
-      "id": "d8de8a3a-c25a-4a22-911c-7b986b0ba579",
-      "name": "{   \"hero_image\": \"https://your-public-cdn.com/path/to/image.jpg\" }"
-    },
-    {
-      "parameters": {
-        "resource": "image",
-        "model": "dall-e-2",
-        "prompt": "={{ $json.message.content }}",
-        "options": {}
-      },
-      "type": "@n8n/n8n-nodes-langchain.openAi",
-      "typeVersion": 1.8,
-      "position": [
-        -176,
-        256
-      ],
-      "id": "025b07d1-5273-4e11-ab27-93e55c37dcea",
-      "name": "Generate an image",
-      "credentials": {
-        "openAiApi": {
-          "id": "7mHb4eCxjT2Cduv4",
-          "name": "OpenAI - upworkers"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "6b52ab16-98e6-458c-a904-36edb9be67fd",
-              "name": "file",
-              "value": "={{ 'data:image/png;base64,' + $json.data }}\n",
-              "type": "string"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        272,
-        256
-      ],
-      "id": "27e629ac-160d-4056-90d9-e8cf7895dbf3",
-      "name": "Edit Fields1"
-    },
-    {
-      "parameters": {
-        "operation": "binaryToPropery",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.extractFromFile",
-      "typeVersion": 1,
-      "position": [
-        48,
-        256
-      ],
-      "id": "36a0a0e2-3d82-427f-a56d-8c1f0a9f8148",
-      "name": "Extract from File"
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://api.cloudinary.com/v1_1/<your-cloud-name>/image/upload",
-        "sendBody": true,
-        "contentType": "multipart-form-data",
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "file",
-              "value": "={{$json.file}}"
-            },
-            {
-              "name": "upload_preset",
-              "value": "unsigned_upload"
-            },
-            {
-              "name": "folder",
-              "value": "ai_websites/landing_pages"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        496,
-        256
-      ],
-      "id": "fa2cf73b-dcd9-46cc-b788-faa9bc965b4a",
-      "name": "Upload image to cloudinary"
-    },
-    {
-      "parameters": {
-        "modelId": {
-          "__rl": true,
-          "value": "gpt-4o-mini",
-          "mode": "list",
-          "cachedResultName": "GPT-4O-MINI"
-        },
-        "messages": {
-          "values": [
-            {
-              "content": "You are a prompt generator for DALL·E. Convert the user’s landing-page idea into ONE concise, vivid scene description for a website hero image. Include composition, setting, lighting, color palette, mood, style. Exclude any UI text, logos, or typography. Output ONLY the description text—no preface or formatting.",
-              "role": "system"
-            },
-            {
-              "content": "={{ $json.prompt }}"
-            }
-          ]
-        },
-        "options": {
-          "maxTokens": 120,
-          "temperature": 0.6
-        }
-      },
-      "type": "@n8n/n8n-nodes-langchain.openAi",
-      "typeVersion": 1.8,
-      "position": [
-        -528,
-        256
-      ],
-      "id": "ed773e87-f664-4a37-8411-7fda827b5011",
-      "name": "Message a model",
-      "credentials": {
-        "openAiApi": {
-          "id": "7mHb4eCxjT2Cduv4",
-          "name": "OpenAI - upworkers"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "url": "https://api.vercel.com/v6/deployments?limit=1000",
+        "url": "https://api.vercel.com/v6/deployments?limit=1",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "options": {}
@@ -408,47 +542,11 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -1024,
-        624
+        2416,
+        256
       ],
-      "id": "a4e768dc-899e-45f7-9ebf-454c80310b1c",
-      "name": "list deployments",
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "tUQy9JgGfpVjfXVg",
-          "name": "vercal Header Auth account Matt"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "const d = (items[0].json.deployments || [])\n  .sort((a, b) => b.created - a.created)\n  .slice(0); // keep 2 newest\nreturn d.map(x => ({ json: { uid: x.uid, createdAt: x.created } }));\n"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -800,
-        624
-      ],
-      "id": "541e2308-33af-4046-9685-159f0292926c",
-      "name": "Code in JavaScript1"
-    },
-    {
-      "parameters": {
-        "method": "DELETE",
-        "url": "=https://api.vercel.com/v6/deployments/{{$json.uid}}",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        -576,
-        624
-      ],
-      "id": "8c1463d9-2e1c-4c67-857b-bd42e560513b",
-      "name": "HTTP Request",
+      "id": "cdaf6bb4-98ad-4446-a11d-77adf2da2bda",
+      "name": "Fetch Latest Deployment URL1",
       "credentials": {
         "httpHeaderAuth": {
           "id": "tUQy9JgGfpVjfXVg",
@@ -470,11 +568,11 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        2064,
+        2688,
         256
       ],
       "id": "e51f5873-22c8-4aca-9d21-913b6d4cd345",
-      "name": "Made URL(project) public",
+      "name": "Make Deployment URL Public",
       "credentials": {
         "httpHeaderAuth": {
           "id": "tUQy9JgGfpVjfXVg",
@@ -484,18 +582,41 @@
     },
     {
       "parameters": {
-        "content": "## Delete all deployments - for clean up",
-        "height": 304,
-        "width": 864
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5bb0cd69-a7a4-45a1-9d64-77b937fb8920",
+              "name": "deployment_url",
+              "value": "={{ 'https://' + $('Fetch Latest Deployment URL1').item.json.deployments[0].url}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2960,
+        256
+      ],
+      "id": "a641a64c-7313-477c-9d39-a2d4d31f0158",
+      "name": "Format Deployment URL"
+    },
+    {
+      "parameters": {
+        "content": "# 🧠 Mini Loveable - AI Landing Page Generator\n\n## Purpose\n\nThis workflow turns a simple text idea into a fully designed and hosted **AI-generated landing page** — complete with a hero image, generated HTML, and live deployment on Vercel.\n\n## How It Works\n\nIt retrieves or creates session memory, generates a DALL·E-style hero image, builds responsive landing-page HTML with GPT-4o-mini, saves it to an n8n data table, and then deploys the finished page to **Vercel**, returning a public live URL in minutes.\n\n## Requirements\n\n* ✅ **OpenAI** account — for GPT and DALL·E image generation\n* ✅ **Cloudinary** account — for hosting generated images\n* ✅ **Vercel** account — for live deployment\n* ✅ **n8n Data Table** with at least two columns:\n  * `sessionID` — text or string\n  * `html` — long text or string\n\n## Setup Notes\n\nInline notes are added throughout the workflow to highlight where you need to update your own details — such as **OpenAI API key**, **Cloudinary cloud name**, **table name**, and **Vercel token**.\nOnce these are configured, the workflow runs end-to-end automatically and publishes a fully functional landing page generated by AI.",
+        "height": 832,
+        "width": 608
       },
       "type": "n8n-nodes-base.stickyNote",
       "position": [
-        -1248,
-        544
+        -1968,
+        -16
       ],
       "typeVersion": 1,
-      "id": "9427bd9a-7594-4f38-9770-ebcae29c0f47",
-      "name": "Sticky Note"
+      "id": "5087eec1-7e30-419b-b77d-80fa97e47cce",
+      "name": "Sticky Note2"
     }
   ],
   "pinData": {},
@@ -504,40 +625,7 @@
       "main": [
         [
           {
-            "node": "Upsert row(s)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Prepare Vercel Payload": {
-      "main": [
-        [
-          {
-            "node": "Deploy to Vercel",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Fetch Deployment URL": {
-      "main": [
-        [
-          {
-            "node": "Made URL(project) public",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Edit Fields": {
-      "main": [
-        [
-          {
-            "node": "Respond to Chat",
+            "node": "Save HTML to Memory Table",
             "type": "main",
             "index": 0
           }
@@ -548,40 +636,7 @@
       "main": [
         [
           {
-            "node": "Get row(s)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Code in JavaScript": {
-      "main": [
-        [
-          {
-            "node": "Message a model",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Upsert row(s)": {
-      "main": [
-        [
-          {
-            "node": "Prepare Vercel Payload",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Get row(s)": {
-      "main": [
-        [
-          {
-            "node": "Code in JavaScript",
+            "node": "Get memory for current session",
             "type": "main",
             "index": 0
           }
@@ -592,18 +647,7 @@
       "main": [
         [
           {
-            "node": "Fetch Deployment URL",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "{   \"hero_image\": \"https://your-public-cdn.com/path/to/image.jpg\" }": {
-      "main": [
-        [
-          {
-            "node": "Generate HTML (OpenAI)",
+            "node": "Fetch Latest Deployment URL1",
             "type": "main",
             "index": 0
           }
@@ -614,51 +658,7 @@
       "main": [
         [
           {
-            "node": "Extract from File",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Extract from File": {
-      "main": [
-        [
-          {
-            "node": "Edit Fields1",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Edit Fields1": {
-      "main": [
-        [
-          {
-            "node": "Upload image to cloudinary",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Upload image to cloudinary": {
-      "main": [
-        [
-          {
-            "node": "{   \"hero_image\": \"https://your-public-cdn.com/path/to/image.jpg\" }",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Message a model": {
-      "main": [
-        [
-          {
-            "node": "Generate an image",
+            "node": "Convert Image to Base64",
             "type": "main",
             "index": 0
           }
@@ -687,11 +687,132 @@
         ]
       ]
     },
-    "Made URL(project) public": {
+    "Get memory for current session": {
       "main": [
         [
           {
-            "node": "Edit Fields",
+            "node": "Prepare Chat Prompt with Memory",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Chat Prompt with Memory": {
+      "main": [
+        [
+          {
+            "node": "Generate Image Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Image Prompt": {
+      "main": [
+        [
+          {
+            "node": "Generate an image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert Image to Base64": {
+      "main": [
+        [
+          {
+            "node": "Format Image as Data URI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Image as Data URI": {
+      "main": [
+        [
+          {
+            "node": "Upload Image to Cloudinary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Image to Cloudinary": {
+      "main": [
+        [
+          {
+            "node": "Return Hero Image URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Return Hero Image URL": {
+      "main": [
+        [
+          {
+            "node": "Generate HTML (OpenAI)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save HTML to Memory Table": {
+      "main": [
+        [
+          {
+            "node": "Prepare Vercel Deployment Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Vercel Deployment Payload": {
+      "main": [
+        [
+          {
+            "node": "Deploy to Vercel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Latest Deployment URL1": {
+      "main": [
+        [
+          {
+            "node": "Make Deployment URL Public",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Make Deployment URL Public": {
+      "main": [
+        [
+          {
+            "node": "Format Deployment URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Deployment URL": {
+      "main": [
+        [
+          {
+            "node": "Respond to Chat",
             "type": "main",
             "index": 0
           }
@@ -699,11 +820,11 @@
       ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "3344c9ee-4eff-417d-9c1d-6e839573ce17",
+  "versionId": "8c3559bf-b926-49a9-9644-4617b68fc813",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "b7d2b0e413b9bc96be579656dd7a55bd3fdcbd67fd6e114509b04dda69944a65"
